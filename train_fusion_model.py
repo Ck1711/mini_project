@@ -69,7 +69,7 @@ xgb_model_path = os.path.join("models", "voice_xgb_model.pkl")
 voice_threshold_path = os.path.join("models", "voice_decision_threshold.json")
  
 # FIX 1: Increased from 35 to 50 — gives the fusion head more room to converge.
-FUSION_EPOCHS = 50
+FUSION_EPOCHS = 80
 BATCH_SIZE = 16
 CNN_MIN_ACCURACY = 0.80
 FUSION_VAL_FRACTION = 0.15

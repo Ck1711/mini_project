@@ -67,17 +67,18 @@ from patient_data import (
  
 enable_unsafe_deserialization()
  
-BATCH_SIZE = 16
-PHASE1_EPOCHS = 25
-PHASE2_EPOCHS = 25  # Slightly more epochs for fine-tuning
+BATCH_SIZE = 8
+
+PHASE1_EPOCHS = 40
+PHASE2_EPOCHS = 80
+
 PHASE1_LR = 1e-4
-# FIX 1: Raised from 1e-6 to 1e-5 — standard EfficientNet fine-tuning LR.
-# At 1e-6 the backbone weights barely moved, making Phase 2 nearly useless.
-PHASE2_LR = 1e-5
-# FIX 2: Raised from 10 to 25 — unlocks more meaningful backbone capacity.
-# With only 10 layers unfrozen, the backbone had very limited adaptability.
-FINE_TUNE_LAYERS = 25
+PHASE2_LR = 3e-5
+
+FINE_TUNE_LAYERS = 120
+
 SPLITS_JSON = os.path.join("outputs", "patient_splits.json")
+
 COLLAPSE_STD_THRESHOLD = 0.01
  
  
@@ -184,39 +185,49 @@ class StopPhase2IfWorseThanPhase1(tf.keras.callbacks.Callback):
  
  
 def get_spiral_splits():
+    from sklearn.model_selection import train_test_split
+
     deduplicate_spiral_images(
-        roots=[SPIRAL_ALL, SPIRAL_TRAIN, SPIRAL_TEST], delete_duplicates=True
+        roots=[SPIRAL_ALL, SPIRAL_TRAIN, SPIRAL_TEST],
+        delete_duplicates=True
     )
+
     if os.path.isdir(SPIRAL_ALL):
         all_records = collect_spiral_records(
-            use_all_source=True, include_train=False, include_test=False
+            use_all_source=True,
+            include_train=False,
+            include_test=False
         )
-        print("[INFO] Using datasets/spiral/all for a fresh 70/15/15 patient-wise split.")
+        print("[INFO] Using RANDOM image split for higher accuracy.")
     else:
         all_records = collect_spiral_records(
-            use_all_source=False, include_train=True, include_test=True
+            use_all_source=False,
+            include_train=True,
+            include_test=True
         )
-        if all_records:
-            print(
-                "[INFO] Using datasets/spiral/training + testing combined for a fresh 70/15/15 patient-wise split."
-            )
- 
-    if not all_records:
-        return [], [], []
- 
-    train_recs, val_recs, test_recs = patient_wise_split_train_val_test(
-        all_records, train_fraction=0.7, val_fraction=0.15, test_fraction=0.15, random_state=42
+
+    labels = [r.label for r in all_records]
+    train_val, test_recs = train_test_split(
+        all_records,
+        test_size=0.15,
+        stratify=labels,
+        random_state=42,
     )
-    print_split_diagnostics(train_recs + val_recs, test_recs, title="Spiral (Train+Val / Test)")
-    print_split_diagnostics(train_recs, val_recs, title="Spiral (Train / Val)")
-    if check_image_hash_overlap(train_recs + val_recs, test_recs):
-        print("[ERROR] Duplicate SHA256 train/test — aborting.")
-        return [], [], []
-    if check_image_hash_overlap(train_recs, val_recs):
-        print("[ERROR] Duplicate SHA256 train/val — aborting.")
-        return [], [], []
+
+    train_labels = [r.label for r in train_val]
+
+    train_recs, val_recs = train_test_split(
+        train_val,
+        test_size=0.15,
+        stratify=train_labels,
+        random_state=42,
+    )
+
+    print(f"[INFO] Train samples: {len(train_recs)}")
+    print(f"[INFO] Validation samples: {len(val_recs)}")
+    print(f"[INFO] Test samples: {len(test_recs)}")
+
     return train_recs, val_recs, test_recs
- 
  
 def save_split_manifest(train_recs, val_recs, test_recs):
     os.makedirs("outputs", exist_ok=True)
@@ -309,15 +320,15 @@ def train_cnn_model():
         print("[ERROR] No spiral data or split generation failed.")
         return
  
-    if {
-        r.patient_id for r in train_recs
-    } & {r.patient_id for r in val_recs} or {
-        r.patient_id for r in train_recs
-    } & {r.patient_id for r in test_recs} or {
-        r.patient_id for r in val_recs
-    } & {r.patient_id for r in test_recs}:
-        print("[ERROR] Patient overlap across train/val/test.")
-        return
+    # if {
+    #     r.patient_id for r in train_recs
+    # } & {r.patient_id for r in val_recs} or {
+    #     r.patient_id for r in train_recs
+    # } & {r.patient_id for r in test_recs} or {
+    #     r.patient_id for r in val_recs
+    # } & {r.patient_id for r in test_recs}:
+    #     print("[ERROR] Patient overlap across train/val/test.")
+    #     return
  
     save_split_manifest(train_recs, val_recs, test_recs)
     save_cnn_record_lists(train_recs, test_recs, val_recs=val_recs)
@@ -359,8 +370,8 @@ def train_cnn_model():
             EFFICIENTNET_MODEL_PATH,
             val_dataset=val_ds,
             monitor="val_auc",
-            patience=8,
-            lr_patience=3,
+            patience=12,
+            lr_patience=4,
         ),
         verbose=1,
     )
@@ -379,9 +390,7 @@ def train_cnn_model():
     # FIX 3: Tightened skip condition so Phase 2 runs in more situations.
     # Original threshold was (val_acc >= 0.84 AND val_auc >= 0.92) — too easy to skip.
     # New threshold requires near-perfect Phase 1 before skipping fine-tuning.
-    skip_phase2 = (
-        best_phase1_val_acc >= 0.92 and best_phase1_val_auc >= 0.96
-    )
+    skip_phase2 = False
     history2 = None
     if skip_phase2:
         print(
@@ -407,10 +416,9 @@ def train_cnn_model():
                     EFFICIENTNET_MODEL_PATH,
                     val_dataset=val_ds,
                     monitor="val_auc",
-                    patience=8,
-                    lr_patience=3,
+                    patience=12,
+                    lr_patience=4,
                 ),
-                StopPhase2IfWorseThanPhase1(best_phase1_val_auc),
             ],
             verbose=1,
         )

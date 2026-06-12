@@ -16,7 +16,11 @@ from sklearn.model_selection import StratifiedGroupKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 
-from model_utils import IMG_SIZE
+try:
+    from model_utils import IMG_SIZE
+except Exception:
+    # Allow running voice-only training without TensorFlow present.
+    IMG_SIZE = 224
 
 VOICE_CSV = os.path.join("datasets", "voice", "current", "pd_speech_features.csv")
 SPLITS_JSON = os.path.join("outputs", "patient_splits.json")
@@ -643,9 +647,31 @@ def get_raw_voice_feature_columns(
 def aggregate_voice_by_patient(
     df: pd.DataFrame, patient_col: str, feature_cols: List[str]
 ) -> pd.DataFrame:
-    return df.groupby(patient_col, as_index=False).agg(
-        {**{c: "mean" for c in feature_cols}, "_label": lambda s: int(s.mode().iloc[0])}
-    )
+    """
+    Aggregate frame-level voice features to patient-level with multiple statistics.
+
+    For each numeric feature we compute: mean, std, min, max, median. The
+    resulting patient-level dataframe contains columns named like
+    '<feature>_mean', '<feature>_std', etc., plus the patient id column and
+    a majority-vote `_label` per patient. This provides richer signals for
+    classifiers that operate on patient-level summaries.
+    """
+    # Build aggregation dict for pandas.groupby. Use train-set-safe operations
+    # (mode for label). Keep patient_col as index then reset.
+    agg_ops = {c: ["mean", "std", "min", "max", "median"] for c in feature_cols}
+    agg_ops["_label"] = lambda s: int(s.mode().iloc[0])
+
+    grouped = df.groupby(patient_col).agg(agg_ops)
+
+    # Flatten MultiIndex columns produced by agg
+    grouped.columns = [
+        f"{col}_{stat}" if stat != "<lambda>" else f"_label"
+        for col, stat in grouped.columns
+    ]
+
+    # Ensure patient id column exists and is first column
+    patient_df = grouped.reset_index()
+    return patient_df
 
 
 def patient_wise_voice_split_df(
@@ -776,9 +802,10 @@ def select_k_best_features(
     X_test: np.ndarray,
     pruned_cols: List[str],
     k: int,
+    score_func=f_classif,
 ) -> Tuple[np.ndarray, np.ndarray, SelectKBest, List[str]]:
     k_eff = min(k, X_train.shape[1])
-    selector = SelectKBest(score_func=f_classif, k=k_eff)
+    selector = SelectKBest(score_func=score_func, k=k_eff)
     X_train_sel = selector.fit_transform(X_train, y_train)
     X_test_sel = selector.transform(X_test)
     support = selector.get_support()
@@ -812,10 +839,33 @@ def load_voice_patient_split(
     voice_df, patient_col, target_col = load_voice_table(csv_path)
     raw_feature_cols = get_raw_voice_feature_columns(voice_df, patient_col, target_col)
     print(f"[INFO] Raw voice feature candidates: {len(raw_feature_cols)}")
+
+    # Aggregate frame-level rows to patient-level using multiple statistics
     patient_df = aggregate_voice_by_patient(voice_df, patient_col, raw_feature_cols)
-    print(f"[INFO] Unique voice patients: {len(patient_df)}")
+    # Build list of aggregated feature column names produced by aggregation
+    stats = ["mean", "std", "min", "max", "median"]
+    aggregated_feature_cols = [f"{c}_{s}" for c in raw_feature_cols for s in stats]
+    print(f"[INFO] Unique voice patients: {len(patient_df)} | aggregated features: {len(aggregated_feature_cols)}")
+
     train_df, test_df = patient_wise_voice_split_df(
-        patient_df, patient_col, raw_feature_cols, test_size, random_state
+        patient_df, patient_col, aggregated_feature_cols, test_size, random_state
+    )
+    print_voice_diagnostics(train_df, test_df, patient_col)
+    return train_df, test_df, patient_col, target_col, aggregated_feature_cols
+
+
+def load_voice_frame_split(
+    test_size: float = 0.2,
+    random_state: int = 42,
+    csv_path: str = VOICE_CSV,
+) -> Tuple[pd.DataFrame, pd.DataFrame, str, str, List[str]]:
+    """Patient-level holdout split on raw frame-level voice data (no aggregation)."""
+    voice_df, patient_col, target_col = load_voice_table(csv_path)
+    raw_feature_cols = get_raw_voice_feature_columns(voice_df, patient_col, target_col)
+    print(f"[INFO] Raw voice feature candidates: {len(raw_feature_cols)}")
+
+    train_df, test_df = patient_wise_voice_split_df(
+        voice_df, patient_col, raw_feature_cols, test_size, random_state
     )
     print_voice_diagnostics(train_df, test_df, patient_col)
     return train_df, test_df, patient_col, target_col, raw_feature_cols
@@ -884,8 +934,8 @@ def prepare_voice_split_pipeline(
 def save_voice_splits(train_df, test_df, patient_col: str, path: str = VOICE_SPLITS_JSON):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     payload = {
-        "train_patients": train_df[patient_col].astype(str).tolist(),
-        "test_patients": test_df[patient_col].astype(str).tolist(),
+        "train_patients": sorted(set(train_df[patient_col].astype(str).tolist())),
+        "test_patients": sorted(set(test_df[patient_col].astype(str).tolist())),
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
@@ -950,8 +1000,11 @@ def resolve_voice_feature_columns(
 
 
 def print_voice_diagnostics(train_df, test_df, patient_col: str):
+    train_patients = train_df[patient_col].nunique()
+    test_patients = test_df[patient_col].nunique()
     print("\n[INFO] === Voice split diagnostics ===")
-    print(f"[INFO] Train patients: {len(train_df)} | Test patients: {len(test_df)}")
+    print(f"[INFO] Train patients: {train_patients} | Test patients: {test_patients}")
+    print(f"[INFO] Train rows: {len(train_df)} | Test rows: {len(test_df)}")
     overlap = set(train_df[patient_col].astype(str)) & set(test_df[patient_col].astype(str))
     if overlap:
         print(f"[ERROR] Voice patient overlap: {sorted(overlap)[:10]}")

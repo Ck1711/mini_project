@@ -25,7 +25,7 @@ from tensorflow.keras.layers import (
     RandomZoom,
     RandomTranslation,
 )
-from tensorflow.keras.applications import EfficientNetB0
+from tensorflow.keras.applications import EfficientNetB2
 from tensorflow.keras.applications.efficientnet import preprocess_input
  
 # ---------------------------------------------------------------------------
@@ -261,20 +261,11 @@ def evaluate_cnn_on_records(
  
  
 def build_advanced_augmentation():
-    """
-    Mild medical-style augmentation on [0, 255] float RGB.
-    Apply BEFORE preprocess_input.
- 
-    FIX: Removed RandomContrast and RandomBrightness from original.
-    Colour/contrast changes can destroy the diagnostic signal in hand-drawn spiral
-    images where pen pressure and tremor patterns are the key features.
-    Rotation, zoom, and translation are safe geometric transforms.
-    """
     return tf.keras.Sequential(
         [
-            RandomRotation(0.06, fill_mode="nearest"),
-            RandomZoom((-0.08, 0.08), fill_mode="nearest"),
-            RandomTranslation(0.04, 0.04, fill_mode="nearest"),
+            RandomRotation(0.10, fill_mode="nearest"),
+            RandomZoom((-0.15, 0.15), fill_mode="nearest"),
+            RandomTranslation(0.08, 0.08, fill_mode="nearest"),
         ],
         name="data_augmentation",
     )
@@ -346,7 +337,9 @@ def compile_efficientnet_classifier(
     """Compile CNN for training or post-load evaluation/predict."""
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=learning_rate),
-        loss=tf.keras.losses.BinaryCrossentropy(label_smoothing=label_smoothing),
+        loss=tf.keras.losses.BinaryFocalCrossentropy(
+            gamma=2.0
+        ),
         metrics=[
             "accuracy",
             tf.keras.metrics.AUC(name="auc"),
@@ -385,7 +378,7 @@ def build_efficientnet_classifier(
     Returns (full_model, backbone) for two-phase training.
     """
     inputs = Input(shape=input_shape, name="image_input")
-    base_model = EfficientNetB0(
+    base_model = EfficientNetB2(
         include_top=False,
         weights="imagenet",
         input_tensor=inputs,
@@ -563,7 +556,9 @@ def build_late_fusion_model(
     # FIX: lr raised from 5e-5 to 1e-4
     fusion_model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss=label_smoothing_binary_crossentropy(0.08),
+        loss=tf.keras.losses.BinaryFocalCrossentropy(
+            gamma=2.0
+        ),
         metrics=["accuracy"],
     )
     attention_model = Model(
@@ -653,7 +648,9 @@ def build_adaptive_attention_fusion(cnn_model, voice_feature_dim, fusion_dim=128
     )
     fusion_model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-        loss=label_smoothing_binary_crossentropy(0.08),
+        loss=tf.keras.losses.BinaryFocalCrossentropy(
+            gamma=2.0
+        ),
         metrics=["accuracy"],
     )
  
