@@ -69,8 +69,8 @@ enable_unsafe_deserialization()
  
 BATCH_SIZE = 8
 
-PHASE1_EPOCHS = 15
-PHASE2_EPOCHS = 25
+PHASE1_EPOCHS = 40
+PHASE2_EPOCHS = 80
 
 PHASE1_LR = 1e-4
 PHASE2_LR = 3e-5
