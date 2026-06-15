@@ -884,3 +884,33 @@ def get_standard_callbacks(
             verbose=0,
         ),
     ]
+
+
+def clean_image_background(img):
+    """
+    Normalizes the image background to pure white while preserving the stroke details.
+    Removes shadows, lighting gradients, and paper color.
+    """
+    import cv2
+    # Convert to grayscale if it's RGB
+    if len(img.shape) == 3:
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    else:
+        gray = img
+    
+    # Estimate the background using morphological dilation and median filtering
+    struct_elem = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+    dilated = cv2.dilate(gray, struct_elem)
+    bg_estimate = cv2.medianBlur(dilated, 31)
+    
+    # Calculate difference and normalize (division method for lighting normalization)
+    bg_estimate = np.clip(bg_estimate, 1, 255)
+    normalized = np.uint8(np.clip((gray.astype(np.float32) / bg_estimate.astype(np.float32)) * 255.0, 0, 255))
+    
+    # Push near-white pixels to pure white (255) to clean up noise
+    _, thresholded = cv2.threshold(normalized, 240, 255, cv2.THRESH_TRUNC)
+    cleaned_gray = cv2.normalize(thresholded, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+    
+    # Convert back to RGB
+    cleaned_rgb = cv2.cvtColor(cleaned_gray, cv2.COLOR_GRAY2RGB)
+    return cleaned_rgb

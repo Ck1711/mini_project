@@ -9,7 +9,7 @@ import pickle
 import json
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from model_utils import safe_load_model, apply_efficientnet_preprocess
+from model_utils import safe_load_model, apply_efficientnet_preprocess, clean_image_background
 
 # Paths (aligned with app.py)
 SCALER_PATH = "scaler.pkl"
@@ -91,8 +91,9 @@ def prepare_image(image_path: str):
         raise FileNotFoundError(f"Image file not found: {image_path}")
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_resized = cv2.resize(img_rgb, (300, 300), interpolation=cv2.INTER_AREA)
-    img_preprocessed = apply_efficientnet_preprocess(img_resized.astype(np.float32))
-    return np.expand_dims(img_preprocessed, axis=0), img_resized
+    img_cleaned = clean_image_background(img_resized)
+    img_preprocessed = apply_efficientnet_preprocess(img_cleaned.astype(np.float32))
+    return np.expand_dims(img_preprocessed, axis=0), img_cleaned
 
 def load_voice_row(csv_path: str, row_index: int):
     df = pd.read_csv(csv_path, header=1)

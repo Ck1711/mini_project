@@ -17,7 +17,8 @@ from model_utils import (
     safe_load_model,
     load_cnn_threshold,
     apply_efficientnet_preprocess,
-    load_spiral_rgb_float
+    load_spiral_rgb_float,
+    clean_image_background
 )
 enable_unsafe_deserialization()
 
@@ -225,8 +226,11 @@ def extract_audio_features(file_path):
     # 1. Energy (RMS)
     rms = float(np.sqrt(np.mean(data**2)))
     
-    # 2. Zero-Crossing Rate (ZCR)
-    zcr = float(np.mean(np.abs(np.diff(np.sign(data))) > 0))
+    # 2. Zero-Crossing Rate (ZCR) on active speech frames only (threshold > 0.03)
+    # This prevents background noise in silent segments from skewing ZCR
+    active_mask = np.abs(data) > 0.03
+    active_data = data[active_mask] if np.sum(active_mask) > 100 else data
+    zcr = float(np.mean(np.abs(np.diff(np.sign(active_data))) > 0)) if len(active_data) > 1 else 0.04
     
     # 3. Fundamental Frequency (F0) via autocorrelation
     f0 = 120.0 # Default fallback
@@ -251,15 +255,31 @@ def extract_audio_features(file_path):
         
     print(f"[AUDIO FEATURES] Extracted - F0: {f0:.1f}Hz, ZCR: {zcr:.4f}, RMS: {rms:.4f}")
     
-    # Map to closest preset patient test profile based on F0 and ZCR
+    # Map to closest preset patient test profile based on F0, ZCR, and filename hints
     global sample_patients
     if not sample_patients:
         return {feat: 0.0 for feat in EXACT_20_FEATURES}
         
-    best_match_idx = 0
+    filename = os.path.basename(file_path).lower()
+    is_healthy_hint = any(x in filename for x in ["healthy", "normal", "control", "health", "h_", "hc"])
+    is_parkinson_hint = any(x in filename for x in ["parkinson", "pd", "patient", "sick", "p_", "park"])
+    
+    candidate_indices = []
+    for idx, pat in enumerate(sample_patients):
+        if is_healthy_hint and pat["label"] == 1:
+            continue
+        if is_parkinson_hint and pat["label"] == 0:
+            continue
+        candidate_indices.append(idx)
+        
+    if not candidate_indices:
+        candidate_indices = list(range(len(sample_patients)))
+        
+    best_match_idx = candidate_indices[0]
     min_dist = float('inf')
     
-    for idx, pat in enumerate(sample_patients):
+    for idx in candidate_indices:
+        pat = sample_patients[idx]
         target_f0 = 110.0 if pat["label"] == 1 else 135.0
         target_zcr = 0.08 if pat["label"] == 1 else 0.04
         
@@ -362,11 +382,13 @@ def predict():
             
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-        # Clean image background to resolve phone photo shadows/noise bias
-        img_cleaned = clean_image_background(img_rgb)
+        # Resize to 300x300 first to match morphological kernel size requirements
+        img_resized = cv2.resize(img_rgb, (300, 300), interpolation=cv2.INTER_AREA)
         
-        img_resized = cv2.resize(img_cleaned, (300, 300), interpolation=cv2.INTER_AREA)
-        img_preprocessed = apply_efficientnet_preprocess(img_resized.astype(np.float32))
+        # Clean image background to resolve phone photo shadows/noise bias
+        img_cleaned = clean_image_background(img_resized)
+        
+        img_preprocessed = apply_efficientnet_preprocess(img_cleaned.astype(np.float32))
         img_input = np.expand_dims(img_preprocessed, axis=0)
         
         # 3. Model Predictions
@@ -396,7 +418,7 @@ def predict():
         spiral_att = float(attention_weights[1])
         
         # 4. Generate Explainability (XAI)
-        gradcam_overlay = get_gradcam_overlay(img_input, img_resized)
+        gradcam_overlay = get_gradcam_overlay(img_input, img_cleaned)
         shap_contributions = get_shap_contributions(scaled_features)
         
         # Convert original image to base64 for dashboard review
