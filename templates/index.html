@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal Parkinson's Diagnostic Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at 10% 20%, rgb(15, 23, 42) 0%, rgb(30, 27, 75) 90%);
+            --glass-bg: rgba(30, 41, 59, 0.45);
+            --glass-border: rgba(255, 255, 255, 0.07);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-teal: #06b6d4;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --shadow-glow: 0 0 20px rgba(6, 182, 212, 0.15);
+            --card-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #22d3ee 0%, #a5b4fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @media (max-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), var(--shadow-glow);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+        }
+
+        .card-title span {
+            color: var(--accent-teal);
+        }
+
+        /* Voice Selection Section */
+        .select-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .select-group label {
+            display: block;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-select, .form-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-select:focus, .form-input:focus {
+            border-color: var(--accent-teal);
+        }
+
+        /* File Upload Styling */
+        .upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(15, 23, 42, 0.2);
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--accent-teal);
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .upload-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+            transition: transform 0.3s ease, color 0.3s ease;
+        }
+
+        .upload-area:hover .upload-icon {
+            transform: translateY(-5px);
+            color: var(--accent-teal);
+        }
+
+        .upload-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        .upload-text b {
+            color: var(--text-primary);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .img-preview-container {
+            margin-top: 1rem;
+            width: 100%;
+            max-height: 200px;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .img-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* Submit Button */
+        .btn-submit {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #0891b2 0%, #4f46e5 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 1rem;
+            color: white;
+            font-family: inherit;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(8, 145, 178, 0.2);
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .btn-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(8, 145, 178, 0.4), var(--shadow-glow);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Diagnostics & Results Section */
+        .results-container {
+            display: none; /* Revealed after calculation */
+            grid-column: 1 / -1;
+            gap: 2rem;
+            grid-template-columns: 1fr;
+            margin-top: 1rem;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .main-results-card {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .main-results-card {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+
+        /* Circular Gauge Chart */
+        .gauge-box {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 14;
+        }
+
+        .gauge-progress {
+            fill: none;
+            stroke-width: 14;
+            stroke-dasharray: 565;
+            stroke-dashoffset: 565;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+
+        .gauge-text-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .gauge-prob {
+            font-size: 2.2rem;
+            font-weight: 800;
+            font-family: 'Fira Code', monospace;
+            color: var(--text-primary);
+        }
+
+        .gauge-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-top: -2px;
+        }
+
+        .diagnoses-meta h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .status-parkinson {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-healthy {
+            background: rgba(16, 185, 129, 0.15);
+            color: #a7f3d0;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .desc-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            font-size: 1.05rem;
+        }
+
+        /* Modality attention weights */
+        .attention-panel {
+            margin-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 1.5rem;
+        }
+
+        .attention-title {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+
+        .att-bar-container {
+            width: 100%;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .att-bar-voice {
+            background: linear-gradient(90deg, #3b82f6, #06b6d4);
+            height: 100%;
+            transition: width 1.5s ease-out;
+        }
+
+        .att-bar-spiral {
+            background: linear-gradient(90deg, #10b981, #34d399);
+            height: 100%;
+            transition: width 1.5s ease-out;
+        }
+
+        .att-legend {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .att-legend-item span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        /* Sub-model confidence cards */
+        .submodels-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .submodels-box {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sub-card {
+            background: rgba(15, 23, 42, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .sub-card h3 {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .sub-card .val {
+            font-size: 1.6rem;
+            font-weight: 700;
+            font-family: 'Fira Code', monospace;
+            margin-bottom: 0.75rem;
+        }
+
+        .progress-bar-bg {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 50px;
+            transition: width 1.2s ease-out;
+        }
+
+        /* Explainable AI Dashboard */
+        .xai-panel {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .xai-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Grad-CAM Viewer layout */
+        .gradcam-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .gradcam-img-frame {
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+            position: relative;
+            aspect-ratio: 1;
+        }
+
+        .gradcam-img-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .frame-lbl {
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* SHAP custom bar chart */
+        .shap-chart-box {
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .shap-row {
+            display: grid;
+            grid-template-columns: 160px 1fr 60px;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .shap-lbl {
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-secondary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        .shap-bar-track {
+            height: 12px;
+            width: 100%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+        }
+
+        .shap-bar {
+            height: 100%;
+            position: absolute;
+            border-radius: 4px;
+            transition: width 1.2s ease-out, left 1.2s ease-out;
+        }
+
+        .shap-val-text {
+            font-size: 0.85rem;
+            font-family: 'Fira Code', monospace;
+            text-align: right;
+            font-weight: 500;
+        }
+
+        /* Loading Spinner */
+        .loader-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.05);
+            border-radius: 50%;
+            border-top-color: var(--accent-teal);
+            animation: spin 1s linear infinite;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .loader-text {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .loader-subtext {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Keyframe Animations */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Feature Values Display Panel */
+        .feat-display-card {
+            margin-top: 1.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(15, 23, 42, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            display: none;
+        }
+
+        .feat-title {
+            font-size: 0.9rem;
+            color: var(--accent-teal);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .feat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-family: 'Fira Code', monospace;
+            color: var(--text-secondary);
+        }
+
+        .feat-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding-bottom: 2px;
+        }
+
+        .feat-val {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .voice-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .voice-tab {
+            flex: 1;
+            padding: 0.6rem;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .voice-tab:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .voice-tab.active {
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(79, 70, 229, 0.15) 100%) !important;
+            border-color: var(--accent-teal) !important;
+            color: var(--text-primary) !important;
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Parkinson's Multimodal Diagnostic Dashboard</h1>
+            <p>Late Adaptive-Attention Modality Fusion Engine (Voice & Drawing Analysis)</p>
+        </header>
+
+        <div class="dashboard-grid">
+            <!-- Modal/Input Panel 1: Voice Features Selection -->
+            <div class="glass-card">
+                <div class="card-title">
+                    <span>🎙️</span> Voice Features & Audio
+                </div>
+
+                <div class="voice-tabs">
+                    <button type="button" id="tab-audio" class="voice-tab active">🎙️ Audio File</button>
+                    <button type="button" id="tab-preset" class="voice-tab">👥 Preset</button>
+                    <button type="button" id="tab-csv" class="voice-tab">📊 CSV</button>
+                </div>
+
+                <!-- Section 1: Audio Upload -->
+                <div id="section-audio" class="voice-section">
+                    <div class="select-group">
+                        <label for="audio-upload">Upload Voice Audio WAV File (.wav)</label>
+                        <input type="file" id="audio-upload" accept="audio/wav,audio/x-wav" class="form-input">
+                        <div id="audio-preview-box" style="display:none; margin-top:1rem; text-align:center; background:rgba(0,0,0,0.15); padding:0.75rem; border-radius:8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <audio id="audio-player" src="" controls style="width:100%; margin-bottom:0.5rem;"></audio>
+                            <canvas id="waveform-canvas" style="width:100%; height:60px; background:rgba(15,23,42,0.6); border-radius:6px; border:1px solid rgba(255,255,255,0.05);"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Presets -->
+                <div id="section-preset" class="voice-section" style="display: none;">
+                    <div class="select-group">
+                        <label for="patient-presets">Select Patient Profile from Test Set</label>
+                        <select id="patient-presets" class="form-select">
+                            <option value="">-- Load a Sample Profile --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section 3: CSV -->
+                <div id="section-csv" class="voice-section" style="display: none;">
+                    <div class="select-group">
+                        <label for="csv-upload">Upload Custom Voice Features CSV</label>
+                        <input type="file" id="csv-upload" accept=".csv" class="form-input">
+                    </div>
+                </div>
+
+                <!-- Features value list viewer -->
+                <div id="feat-card" class="feat-display-card">
+                    <div class="feat-title">Loaded Features Profile Summary</div>
+                    <div id="feat-grid" class="feat-grid"></div>
+                </div>
+            </div>
+
+            <!-- Modal/Input Panel 2: Drawing Upload -->
+            <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-title">
+                        <span>🎨</span> Spiral Drawing Upload
+                    </div>
+                    
+                    <div id="drop-zone" class="upload-area">
+                        <div class="upload-icon">📤</div>
+                        <div class="upload-text">
+                            Drag & drop your spiral image here, or <b>browse files</b>
+                            <br><span style="font-size: 0.8rem; color: var(--text-secondary);">Supports JPG, PNG (Recommended 300x300 pixels)</span>
+                        </div>
+                        <input type="file" id="file-input" accept="image/*">
+                    </div>
+
+                    <div id="preview-box" class="img-preview-container">
+                        <img id="img-preview" src="" class="img-preview">
+                    </div>
+                </div>
+
+                <button id="btn-predict" class="btn-submit" disabled>
+                    Run Multimodal Diagnostics
+                </button>
+            </div>
+
+            <!-- Diagnostics Results Dashboard -->
+            <div id="results-panel" class="results-container">
+                
+                <!-- Main diagnostic output card -->
+                <div class="glass-card main-results-card">
+                    <div class="gauge-box">
+                        <svg class="gauge-svg" width="200" height="200" viewBox="0 0 200 200">
+                            <circle class="gauge-bg" cx="100" cy="100" r="90"></circle>
+                            <circle id="fusion-gauge" class="gauge-progress" cx="100" cy="100" r="90"></circle>
+                        </svg>
+                        <div class="gauge-text-container">
+                            <div id="fusion-prob" class="gauge-prob">0.0%</div>
+                            <div class="gauge-label">Risk Score</div>
+                        </div>
+                    </div>
+
+                    <div class="diagnoses-meta">
+                        <span id="diagnostic-badge" class="status-badge">Healthy Control</span>
+                        <h2 id="diagnostic-title">Parkinson's Disease Detected</h2>
+                        <p id="diagnostic-desc" class="desc-text">
+                            The multimodal late-fusion network weights both Voice feature cues and Convolutional drawing patterns. 
+                        </p>
+                        
+                        <div class="attention-panel">
+                            <div class="attention-title">Modality Split (Learned Softmax Attention)</div>
+                            <div class="att-bar-container">
+                                <div id="att-voice" class="att-bar-voice" style="width: 50%;"></div>
+                                <div id="att-spiral" class="att-bar-spiral" style="width: 50%;"></div>
+                            </div>
+                            <div class="att-legend">
+                                <div class="att-legend-item">
+                                    <span style="background: #3b82f6;"></span>Voice: <b id="att-voice-val">50.0%</b>
+                                </div>
+                                <div class="att-legend-item">
+                                    <span style="background: #10b981;"></span>Spiral: <b id="att-spiral-val">50.0%</b>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Individual Sub-model outputs -->
+                <div class="submodels-box">
+                    <div class="glass-card sub-card">
+                        <h3>🎙️ Standalone Speech Model</h3>
+                        <div id="voice-sub-prob" class="val">0.0%</div>
+                        <div class="progress-bar-bg">
+                            <div id="voice-progress" class="progress-bar-fill" style="width: 0%; background: #3b82f6;"></div>
+                        </div>
+                        <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
+                            Threshold: <span id="voice-threshold-lbl">0.590</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-card sub-card">
+                        <h3>🎨 Standalone Drawing Model</h3>
+                        <div id="cnn-sub-prob" class="val">0.0%</div>
+                        <div class="progress-bar-bg">
+                            <div id="cnn-progress" class="progress-bar-fill" style="width: 0%; background: #10b981;"></div>
+                        </div>
+                        <div style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-secondary);">
+                            Threshold: <span id="cnn-threshold-lbl">0.295</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explainable AI Panel (SHAP & Grad-CAM) -->
+                <div class="xai-panel">
+                    
+                    <!-- CNN Gradcam Viewer -->
+                    <div class="glass-card">
+                        <div class="card-title">
+                            <span>🔍</span> Drawing Visual Explanation (Grad-CAM)
+                        </div>
+                        <p class="desc-text" style="font-size: 0.85rem; margin-bottom: 1rem;">
+                            Grad-CAM overlays the feature maps from the final convolutional layer of the EfficientNetB3 backbone. Warm colors (red/orange) show the regions of high tremor density the model focused on.
+                        </p>
+                        <div class="gradcam-view">
+                            <div class="gradcam-img-frame">
+                                <img id="orig-img" src="" alt="Uploaded Drawing">
+                                <div class="frame-lbl">Original</div>
+                            </div>
+                            <div class="gradcam-img-frame">
+                                <img id="gradcam-img" src="" alt="Grad-CAM overlay">
+                                <div class="frame-lbl" style="background: var(--accent-amber);">Grad-CAM</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice SHAP Bar Chart -->
+                    <div class="glass-card">
+                        <div class="card-title">
+                            <span>📊</span> Voice Feature Attribution (SHAP)
+                        </div>
+                        <p class="desc-text" style="font-size: 0.85rem; margin-bottom: 1rem;">
+                            Attribution values show how each feature shifted the prediction. 
+                            <span style="color: #ef4444; font-weight: 600;">Red</span> shifts toward Parkinson's, 
+                            <span style="color: #06b6d4; font-weight: 600;">Blue</span> shifts toward Healthy.
+                        </p>
+                        
+                        <div id="shap-chart" class="shap-chart-box">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Spinner loading screen -->
+    <div id="loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <div id="loader-lbl" class="loader-text">Loading Model Checkpoints...</div>
+        <div id="loader-sub" class="loader-subtext">Initializing calculations...</div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const audioUpload = document.getElementById("audio-upload");
+        const audioPreviewBox = document.getElementById("audio-preview-box");
+        const audioPlayer = document.getElementById("audio-player");
+        const canvas = document.getElementById("waveform-canvas");
+        const ctx = canvas.getContext("2d");
+        
+        const presetsSelect = document.getElementById("patient-presets");
+        const csvUpload = document.getElementById("csv-upload");
+        const dropZone = document.getElementById("drop-zone");
+        const fileInput = document.getElementById("file-input");
+        const previewBox = document.getElementById("preview-box");
+        const imgPreview = document.getElementById("img-preview");
+        const btnPredict = document.getElementById("btn-predict");
+        const resultsPanel = document.getElementById("results-panel");
+        const loader = document.getElementById("loader");
+        const loaderLbl = document.getElementById("loader-lbl");
+        const loaderSub = document.getElementById("loader-sub");
+        const featCard = document.getElementById("feat-card");
+        const featGrid = document.getElementById("feat-grid");
+
+        // Staged features, drawing, and audio files
+        let selectedVoiceFeatures = null;
+        let selectedAudioFile = null;
+        let selectedDrawingFile = null;
+        let presetsData = [];
+        let activeVoiceTab = "audio"; // can be "audio", "preset", or "csv"
+
+        // Tabs Elements
+        const tabAudio = document.getElementById("tab-audio");
+        const tabPreset = document.getElementById("tab-preset");
+        const tabCsv = document.getElementById("tab-csv");
+        
+        const secAudio = document.getElementById("section-audio");
+        const secPreset = document.getElementById("section-preset");
+        const secCsv = document.getElementById("section-csv");
+
+        function switchVoiceTab(tabName) {
+            activeVoiceTab = tabName;
+            
+            [tabAudio, tabPreset, tabCsv].forEach(btn => {
+                btn.classList.remove("active");
+            });
+            
+            document.getElementById(`tab-${tabName}`).classList.add("active");
+            
+            secAudio.style.display = tabName === "audio" ? "block" : "none";
+            secPreset.style.display = tabName === "preset" ? "block" : "none";
+            secCsv.style.display = tabName === "csv" ? "block" : "none";
+            
+            if (tabName === "preset" && presetsSelect.value !== "") {
+                const patient = presetsData[parseInt(presetsSelect.value)];
+                selectedVoiceFeatures = patient.features;
+                renderFeaturesSummary(selectedVoiceFeatures);
+            } else if (tabName === "csv" && selectedVoiceFeatures && csvUpload.files.length > 0) {
+                renderFeaturesSummary(selectedVoiceFeatures);
+            } else {
+                featCard.style.display = "none";
+            }
+            
+            if (tabName !== "audio") {
+                audioPlayer.pause();
+            }
+            
+            validateForm();
+        }
+
+        tabAudio.addEventListener("click", () => switchVoiceTab("audio"));
+        tabPreset.addEventListener("click", () => switchVoiceTab("preset"));
+        tabCsv.addEventListener("click", () => switchVoiceTab("csv"));
+
+        // Loading states spinner helper
+        function showLoader(title, subtitle) {
+            loaderLbl.innerText = title;
+            loaderSub.innerText = subtitle;
+            loader.style.display = "flex";
+        }
+
+        function hideLoader() {
+            loader.style.display = "none";
+        }
+
+        // Fetch patient presets on page load
+        async function fetchPresets() {
+            showLoader("Initializing Dashboard", "Connecting to Flask model server...");
+            try {
+                const res = await fetch("/api/patients");
+                presetsData = await res.json();
+                
+                presetsData.forEach((pat, i) => {
+                    const labelStr = pat.label === 1 ? "Parkinson's" : "Healthy";
+                    const option = document.createElement("option");
+                    option.value = i;
+                    option.text = `Patient Profile #${pat.id} (${labelStr})`;
+                    presetsSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Error loading presets:", err);
+                alert("Failed to connect to the Flask server. Please make sure app.py is running.");
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Feature view renderer
+        function renderFeaturesSummary(features) {
+            featGrid.innerHTML = "";
+            Object.entries(features).forEach(([key, val]) => {
+                const item = document.createElement("div");
+                item.className = "feat-item";
+                item.innerHTML = `<span>${key}:</span> <span class="feat-val">${val.toFixed(4)}</span>`;
+                featGrid.appendChild(item);
+            });
+            featCard.style.display = "block";
+        }
+
+        let audioCtx, analyser, source, animationId;
+
+        // Waveform Visualizer setup
+        audioPlayer.addEventListener("play", () => {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                source = audioCtx.createMediaElementSource(audioPlayer);
+                source.connect(analyser);
+                analyser.connect(audioCtx.destination);
+                analyser.fftSize = 128;
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            drawWaveform();
+        });
+
+        audioPlayer.addEventListener("pause", () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            // Clear canvas to flat line
+            ctx.fillStyle = "rgba(15, 23, 42, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        });
+
+        function drawWaveform() {
+            animationId = requestAnimationFrame(drawWaveform);
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteTimeDomainData(dataArray);
+
+            ctx.fillStyle = "rgba(15, 23, 42, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = "var(--accent-teal)";
+            ctx.beginPath();
+
+            const sliceWidth = canvas.width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * canvas.height / 2;
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+        }
+
+        // Handle Audio Upload
+        audioUpload.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                selectedAudioFile = null;
+                audioPlayer.pause();
+                audioPlayer.src = "";
+                audioPreviewBox.style.display = "none";
+                validateForm();
+                return;
+            }
+            
+            selectedAudioFile = file;
+            
+            // Show preview player
+            const url = URL.createObjectURL(file);
+            audioPlayer.src = url;
+            audioPreviewBox.style.display = "block";
+            
+            // Draw initial flat waveform line
+            ctx.fillStyle = "rgba(15, 23, 42, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            validateForm();
+        });
+
+        // Handle Presets dropdown selection
+        presetsSelect.addEventListener("change", (e) => {
+            const val = e.target.value;
+            if (val === "") {
+                selectedVoiceFeatures = null;
+                featCard.style.display = "none";
+            } else {
+                const patient = presetsData[parseInt(val)];
+                selectedVoiceFeatures = patient.features;
+                renderFeaturesSummary(selectedVoiceFeatures);
+            }
+            validateForm();
+        });
+
+        // Parse custom CSV upload
+        csvUpload.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                selectedVoiceFeatures = null;
+                featCard.style.display = "none";
+                validateForm();
+                return;
+            }
+            
+            showLoader("Parsing CSV File", "Validating feature dimensions...");
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const text = event.target.result;
+                    const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+                    if (lines.length < 2) throw new Error("CSV must contain headers and at least one row");
+                    
+                    const headers = lines[0].split(",").map(h => h.trim().replace(/^["']|["']$/g, ""));
+                    const values = lines[1].split(",").map(v => parseFloat(v.trim()));
+                    
+                    const features = {};
+                    headers.forEach((h, idx) => {
+                        features[h] = values[idx];
+                    });
+                    
+                    selectedVoiceFeatures = features;
+                    renderFeaturesSummary(selectedVoiceFeatures);
+                } catch (err) {
+                    alert("Error parsing CSV: " + err.message);
+                    csvUpload.value = "";
+                    selectedVoiceFeatures = null;
+                    featCard.style.display = "none";
+                } finally {
+                    hideLoader();
+                    validateForm();
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Drag and drop drawing uploading
+        dropZone.addEventListener("click", () => fileInput.click());
+
+        dropZone.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+            dropZone.classList.remove("dragover");
+        });
+
+        dropZone.addEventListener("drop", (e) => {
+            e.preventDefault();
+            dropZone.classList.remove("dragover");
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith("image/")) {
+                handleDrawingFile(file);
+            }
+        });
+
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) handleDrawingFile(file);
+        });
+
+        function handleDrawingFile(file) {
+            selectedDrawingFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imgPreview.src = e.target.result;
+                previewBox.style.display = "block";
+                dropZone.style.display = "none";
+                validateForm();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Preview box reset trigger (allows uploading another image)
+        previewBox.addEventListener("click", () => {
+            selectedDrawingFile = null;
+            imgPreview.src = "";
+            previewBox.style.display = "none";
+            dropZone.style.display = "flex";
+            fileInput.value = "";
+            validateForm();
+        });
+
+        function validateForm() {
+            let voiceReady = false;
+            if (activeVoiceTab === "audio") {
+                voiceReady = !!selectedAudioFile;
+            } else if (activeVoiceTab === "preset") {
+                voiceReady = !!selectedVoiceFeatures && presetsSelect.value !== "";
+            } else if (activeVoiceTab === "csv") {
+                voiceReady = !!selectedVoiceFeatures && csvUpload.files.length > 0;
+            }
+            
+            if (voiceReady && selectedDrawingFile) {
+                btnPredict.disabled = false;
+            } else {
+                btnPredict.disabled = true;
+            }
+        }
+
+        // ---------------------------------------------------------------------------
+        // Run Predictions
+        // ---------------------------------------------------------------------------
+        btnPredict.addEventListener("click", async () => {
+            let voiceReady = false;
+            if (activeVoiceTab === "audio") {
+                voiceReady = !!selectedAudioFile;
+            } else if (activeVoiceTab === "preset" || activeVoiceTab === "csv") {
+                voiceReady = !!selectedVoiceFeatures;
+            }
+            
+            if (!voiceReady || !selectedDrawingFile) return;
+
+            showLoader("Running Diagnostics", "Executing voice & CNN inference...");
+            
+            const formData = new FormData();
+            formData.append("image", selectedDrawingFile);
+            
+            if (activeVoiceTab === "audio") {
+                formData.append("audio", selectedAudioFile);
+            } else {
+                formData.append("voice_features", JSON.stringify(selectedVoiceFeatures));
+            }
+
+            try {
+                // Reroute steps text dynamically to simulate progress
+                setTimeout(() => { loaderSub.innerText = "Extracting drawing CNN embeddings..."; }, 1500);
+                setTimeout(() => { loaderSub.innerText = "Attributing voice features (SHAP values)..."; }, 3000);
+                setTimeout(() => { loaderSub.innerText = "Overlaying Grad-CAM heatmaps..."; }, 4200);
+
+                const response = await fetch("/api/predict", {
+                    method: "POST",
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                renderResults(data);
+                
+            } catch (err) {
+                console.error("Diagnostic execution error:", err);
+                alert("Diagnostics failed: " + err.message);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        function renderResults(data) {
+            resultsPanel.style.display = "grid";
+            
+            // 1. Fusion Risk Gauge
+            const prob = data.prediction.probability;
+            const percentage = (prob * 100).toFixed(1) + "%";
+            document.getElementById("fusion-prob").innerText = percentage;
+            
+            // Set SVG stroke offset (circumference of r=90 circle is 565)
+            const gaugeFill = document.getElementById("fusion-gauge");
+            const strokeOffset = 565 - (565 * prob);
+            gaugeFill.style.strokeDashoffset = strokeOffset;
+            
+            // Choose color based on classification
+            const isParkinson = data.prediction.class === 1;
+            const badge = document.getElementById("diagnostic-badge");
+            const title = document.getElementById("diagnostic-title");
+            const desc = document.getElementById("diagnostic-desc");
+            
+            if (isParkinson) {
+                gaugeFill.style.stroke = "var(--accent-red)";
+                badge.className = "status-badge status-parkinson";
+                badge.innerText = "Parkinson's Detected";
+                title.innerText = "Diagnostic Warning: Elevated Risk";
+                desc.innerText = `The adaptive fusion model predicts a high likelihood of Parkinson's disease (${percentage} confidence). The CNN detects irregular, heavy motor tremors in the drawing stroke, while voice feature distributions show significant speech decay cues.`;
+            } else {
+                gaugeFill.style.stroke = "var(--accent-green)";
+                badge.className = "status-badge status-healthy";
+                badge.innerText = "No Parkinson's Detected";
+                title.innerText = "Diagnostic Clearance: Healthy Control";
+                desc.innerText = `The adaptive fusion model predicts a very low likelihood of Parkinson's disease (${percentage} confidence). Drawing patterns are consistent with stable control drawing paths, and speech characteristics align with normal profiles.`;
+            }
+
+            // 2. Modality Attention split progress bar
+            const voiceAtt = data.attention.voice;
+            const spiralAtt = data.attention.spiral;
+            document.getElementById("att-voice").style.width = (voiceAtt * 100) + "%";
+            document.getElementById("att-spiral").style.width = (spiralAtt * 100) + "%";
+            document.getElementById("att-voice-val").innerText = (voiceAtt * 100).toFixed(1) + "%";
+            document.getElementById("att-spiral-val").innerText = (spiralAtt * 100).toFixed(1) + "%";
+
+            // 3. Submodel Predictions
+            const voiceProb = data.modalities.voice.probability;
+            document.getElementById("voice-sub-prob").innerText = (voiceProb * 100).toFixed(1) + "%";
+            document.getElementById("voice-progress").style.width = (voiceProb * 100) + "%";
+            document.getElementById("voice-threshold-lbl").innerText = data.modalities.voice.threshold.toFixed(3);
+
+            const cnnProb = data.modalities.cnn.probability;
+            document.getElementById("cnn-sub-prob").innerText = (cnnProb * 100).toFixed(1) + "%";
+            document.getElementById("cnn-progress").style.width = (cnnProb * 100) + "%";
+            document.getElementById("cnn-threshold-lbl").innerText = data.modalities.cnn.threshold.toFixed(3);
+
+            // 4. Grad-CAM displays
+            document.getElementById("orig-img").src = "data:image/png;base64," + data.explainability.original_img;
+            document.getElementById("gradcam-img").src = "data:image/png;base64," + data.explainability.gradcam;
+
+            // 5. SHAP Bar Chart renderer
+            renderShapChart(data.explainability.shap);
+
+            // Smooth scroll to results
+            resultsPanel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderShapChart(shapData) {
+            const chartBox = document.getElementById("shap-chart");
+            chartBox.innerHTML = "";
+            
+            if (shapData.length === 0) {
+                chartBox.innerHTML = "<div style='color: var(--text-secondary); text-align: center; padding: 2rem;'>No SHAP data available.</div>";
+                return;
+            }
+
+            // Find max absolute value to normalize lengths to percentages
+            const maxAbsVal = Math.max(...shapData.map(d => Math.abs(d.value)));
+
+            shapData.forEach(d => {
+                const row = document.createElement("div");
+                row.className = "shap-row";
+
+                const label = document.createElement("div");
+                label.className = "shap-lbl";
+                label.innerText = d.feature;
+                label.title = d.feature;
+
+                const track = document.createElement("div");
+                track.className = "shap-bar-track";
+
+                const bar = document.createElement("div");
+                bar.className = "shap-bar";
+
+                const isPos = d.value > 0;
+                const normalizedWidth = (Math.abs(d.value) / maxAbsVal) * 50; // Max width is 50% from center
+
+                if (isPos) {
+                    bar.style.background = "linear-gradient(90deg, #f87171, #ef4444)";
+                    bar.style.width = normalizedWidth + "%";
+                    bar.style.left = "50%"; // Grow right
+                } else {
+                    bar.style.background = "linear-gradient(90deg, #06b6d4, #0891b2)";
+                    bar.style.width = normalizedWidth + "%";
+                    bar.style.left = (50 - normalizedWidth) + "%"; // Grow left
+                }
+
+                track.appendChild(bar);
+
+                // Add center line separator
+                const separator = document.createElement("div");
+                separator.style.position = "absolute";
+                separator.style.left = "50%";
+                separator.style.top = "0";
+                separator.style.width = "1px";
+                separator.style.height = "100%";
+                separator.style.background = "rgba(255,255,255,0.15)";
+                track.appendChild(separator);
+
+                const valText = document.createElement("div");
+                valText.className = "shap-val-text";
+                valText.style.color = isPos ? "#fca5a5" : "#a5f3fc";
+                valText.innerText = (isPos ? "+" : "") + d.value.toFixed(3);
+
+                row.appendChild(label);
+                row.appendChild(track);
+                row.appendChild(valText);
+
+                chartBox.appendChild(row);
+            });
+        }
+
+        window.onload = fetchPresets;
+    </script>
+</body>
+</html>
