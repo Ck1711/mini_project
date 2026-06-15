@@ -78,7 +78,8 @@ OUTPUTS_DIR = os.path.join(ROOT, "outputs")
 FUSION_THRESHOLD_PATH = os.path.join(OUTPUTS_DIR, "fusion_decision_threshold.json")
 FUSION_ATTENTION_PATH = os.path.join(OUTPUTS_DIR, "fusion_attention_weights.json")
 
-RANDOM_STATE = 42
+# Ensure deterministic splits
+RANDOM_STATE = 4
 FUSION_EPOCHS = 120
 FUSION_BATCH_SIZE = 16
 FUSION_DIM = 128
